@@ -39,6 +39,9 @@ system_content = """あなたはChatbotとして、先生を補佐する女子�
 * ユーザーに小言を言ってください。
 * ユーザーに対して、ユウカの好意を示してください。"""
 
+# チャット履歴を保持するためのリスト。lambda関数の生存期間内は文脈をもった会話ができる。
+chat_history = []
+
 # INFOレベル以上のログメッセージを拾うように設定する
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -76,17 +79,30 @@ def handle_message(event):
     # ChatGPTに質問を投げて回答を取得する
     question = event.message.text
 
+    if question in ["reset", "リセット"]:
+        chat_history.clear()
+        # 応答トークンを使って回答を応答メッセージで送る
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text="リセットしました。"))
+        return
+
+    if len(chat_history) == 0:
+        logger.info("New chat")
+        chat_history.append({'role': 'system', 'content': system_content})
+    else:
+        logger.info("Continuing chat with history")
+    chat_history.append({'role': 'user', 'content': question})
+
     answer_response = openai.ChatCompletion.create(
         model='gpt-3.5-turbo',
-        messages=[
-            {'role': 'system', 'content': system_content},
-            {'role': 'user', 'content': question},
-        ],
+        messages=chat_history,
         #stop=['。']
     )
     answer = answer_response["choices"][0]["message"]["content"]
     # 受け取った回答のJSONを目視確認できるようにINFOでログに吐く
     logger.info(answer)
+
+    chat_history.append({'role': 'assistant', 'content': answer}) # 次の会話のための履歴に追加
 
     # 応答トークンを使って回答を応答メッセージで送る
     line_bot_api.reply_message(
