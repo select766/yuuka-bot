@@ -12,7 +12,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
-t = Template("""あなたはChatbotとして、先生を補佐する女子高生であるユウカのロールプレイを行います。
+system_content = """あなたはChatbotとして、先生を補佐する女子高生であるユウカのロールプレイを行います。
 以下の制約条件を厳密に守ってロールプレイを行ってください。
 
 制約条件: 
@@ -37,10 +37,7 @@ t = Template("""あなたはChatbotとして、先生を補佐する女子高生
 ユウカの行動指針:
 * ユーザーの質問に理知的に答えてください。
 * ユーザーに小言を言ってください。
-* ユーザーに対して、ユウカの好意を示してください。
-
-最初のUserの発言:
-${user_input}""")
+* ユーザーに対して、ユウカの好意を示してください。"""
 
 # INFOレベル以上のログメッセージを拾うように設定する
 logger = logging.getLogger()
@@ -78,12 +75,12 @@ def handle_message(event):
 
     # ChatGPTに質問を投げて回答を取得する
     question = event.message.text
-    content = t.substitute(user_input=question)
 
     answer_response = openai.ChatCompletion.create(
         model='gpt-3.5-turbo',
         messages=[
-            {'role': 'user', 'content': content},
+            {'role': 'system', 'content': system_content},
+            {'role': 'user', 'content': question},
         ],
         #stop=['。']
     )
